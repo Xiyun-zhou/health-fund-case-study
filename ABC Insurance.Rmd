@@ -1,0 +1,854 @@
+---
+title: "ABC Insurance - Case Study"
+author: "Xiyun Zhou"
+date: "2025-05-05"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+
+```
+
+## R Markdown
+
+
+```{r}
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(gridExtra)
+library(tidyr)
+library(knitr)
+library(scales)
+```
+
+
+
+
+ According to Bureau of statistics, 澳洲购买私人保险的人数。。。
+ 
+
+```{r}
+New <- read_excel("~/Desktop/Medibank /New Policies CY22_24 (1).xlsx")
+
+End <- read_excel("~/Desktop/Medibank /Terminations CY22_24 (1).xlsx")
+
+New$Age_Band <- factor(
+  New$Age_Band,
+  levels = c(
+    "less than 30 Years",
+    "30-39 Years",        
+    "40-49 Years",        
+    "50-59 Years",      
+     "60+ Years"          
+  )
+)
+
+End$Age_Band <- factor(
+  End$Age_Band,
+  levels = c(
+    "less than 30 Years",
+    "30-39 Years",        
+    "40-49 Years",        
+    "50-59 Years",      
+     "60+ Years"          
+  )
+)
+
+End$Tenure_Band <- factor(
+  End$Tenure_Band,
+  levels = c(
+    "0 - 2 Years",
+    "3 - 5 Years", 
+   "6 - 10 Years",
+   "11 - 19 Years",
+   "20+ Years"
+  )
+)
+
+
+New$Product <- factor(
+  New$Product,
+  levels = c(
+    "Product A", "Product B","Product C", "Product D", "Product E", "Product F",
+ "Product G", "Product H", "Other"
+  )
+)
+
+End$Product <- factor(
+  End$Product,
+  levels = c(
+    "Product A", "Product B","Product C", "Product D", "Product E", "Product F",
+ "Product G", "Product H", "Other"
+  )
+)
+
+
+
+
+head(New)
+head(End)
+
+na.omit(New)
+na.omit(End)
+```
+
+```{r}
+unique(New$Scale)
+unique(New$Year)
+unique(New$Age_Band)
+unique(New$Product)
+```
+
+Total New and termination in 2022,2023,2024.
+
+
+```{r}
+
+new_policies_summary <- New%>%
+  group_by(Year) %>%
+  summarise(Total_New = sum(`New Policies`, na.rm = TRUE)) %>% 
+  mutate(New_K = Total_New/ 1000)
+  
+
+
+ggplot(new_policies_summary, aes(x = Year, y = New_K, fill = as.factor(Year))) +
+  geom_bar(stat = "identity", width = 0.4) +  
+  geom_line(group = 1, color = "black", size = 1) +
+  geom_point(color = "black", size = 2) +
+  scale_x_continuous(breaks = c(2022, 2023, 2024)) +  # Only show full years on x-axis
+  geom_text(aes(label = round(New_K, 1)), vjust = -0.3, size = 5) + 
+  labs(title = "Total New Policies by Year",
+       x = "Year", y = "Total Number of New Policies (in thousands") +
+  theme_minimal() +
+  theme(legend.position = "none")  
+```
+```{r}
+new_policies_summary <- New %>%
+  group_by(Year) %>%
+  summarise(Total_New = sum(`New Policies`, na.rm = TRUE)) %>%
+  mutate(New_K = Total_New / 1000)
+
+New_p1 <- ggplot(new_policies_summary, aes(x = Year, y = New_K, fill = as.factor(Year))) +
+  geom_line(aes(group = 1), color = "#B22222",, size = 1) +
+  geom_point(color = "black", size = 2) +
+  geom_text(aes(label = round(New_K, 1)), nudge_y = 7, size = 5) +
+  scale_x_continuous(breaks = c(2022, 2023, 2024)) +
+  scale_y_continuous(limits = c(600, 780), expand = expansion(mult = c(0, 0.05))) +
+  labs(
+    title = "Total New Policies by Year",
+    x = "Year",
+    y = "Total New Policies (in thousands)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+
+```
+
+
+
+
+
+
+
+Percentage change
+
+```{r}
+new_policies_summary <- new_policies_summary %>%
+  arrange(Year)
+
+# Calculate percentage change from previous year
+new_policies_summary <- new_policies_summary %>%
+  mutate(Percent_Change = (Total_New/ lag(Total_New) - 1) * 100)
+
+ggplot(new_policies_summary, aes(x = Year, y = Percent_Change, fill = Percent_Change > 0)) +
+  geom_bar(stat = "identity", width = 0.6, show.legend = FALSE) +
+  geom_text(aes(label = paste0(round(Percent_Change, 1), "%")), vjust = -0.5, size = 5) +
+  scale_fill_manual(values = c("TRUE" = "green", "FALSE" = "red")) +
+  labs(title = "Year-over-Year % Change in New Policies",
+       x = "Year", y = "Percentage Change (%)") +
+  theme_minimal()
+```
+
+
+
+
+
+
+```{r}
+terminations_summary <- End %>%
+  group_by(Year) %>%
+  summarise(Total_Terminations = sum(Terminations, na.rm = TRUE))
+
+ggplot(terminations_summary, aes(x = Year, y = Total_Terminations, fill = as.factor(Year))) +
+  geom_bar(stat = "identity", width = 0.4) +
+  geom_line(group = 1, color = "black", size = 1) +
+  geom_point(color = "black", size = 2) +
+  scale_x_continuous(breaks = c(2022, 2023, 2024)) + 
+  geom_text(aes(label = Total_Terminations), vjust = -0.3, color = "black", size = 4) + 
+  labs(title = "Total Terminations by Year",
+       x = "Year", y = "Total Number of Terminations") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+
+ggplot(terminations_summary, aes(x = Year, y = Total_Terminations))+
+  scale_x_continuous(breaks = c(2022, 2023, 2024)) + 
+  geom_line()
+
+```
+
+
+```{r}
+terminations_summary <- terminations_summary %>%
+  arrange(Year) %>%
+  mutate(Percent_Change = (Total_Terminations / lag(Total_Terminations) - 1) * 100)
+
+# Plot percent change
+ggplot(terminations_summary, aes(x = Year, y = Percent_Change)) +
+  geom_bar(stat = "identity", fill = "tomato") +
+  geom_text(aes(label = paste0(round(Percent_Change, 1), "%")), vjust = -0.5, size = 5) +
+  labs(title = "Year-over-Year % Change in Terminations",
+       x = "Year", y = "Percentage Change (%)") +
+  theme_minimal()
+```
+
+
+```{r}
+terminations_summary <- terminations_summary %>%
+  mutate(Terminations_K = Total_Terminations / 1000)
+
+Term_p1<- ggplot(terminations_summary, aes(x = Year, y = Terminations_K)) +
+  geom_line(aes(group = 1), color = "steelblue", size = 1) +
+  geom_point(color = "black", size = 2) +
+ geom_text(aes(label = round(Terminations_K, 1)), nudge_y = 8, size = 5) +
+  scale_y_continuous(limits = c(600, 780), expand = expansion(mult = c(0, 0.05)))+
+  scale_x_continuous(breaks = c(2022, 2023, 2024)) +
+  labs(title = "Total Terminations by Year",
+       x = "Year", y = "Terminations (in Thousands)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+grid.arrange(New_p1, Term_p1, nrow = 2)
+```
+
+```{r}
+# Assuming you have: new_policies_summary and termination_summary
+net_summary <- full_join(new_policies_summary, terminations_summary, by = "Year") %>%
+  mutate(Net_Gain = Total_New - Total_Terminations)
+
+ggplot(net_summary, aes(x = Year, y = Net_Gain, fill = Net_Gain > 0)) +
+  geom_bar(stat = "identity", width = 0.4, show.legend = FALSE) +
+  scale_x_continuous(breaks = c(2022, 2023, 2024)) + 
+  geom_text(aes(label = format(Net_Gain, big.mark = ",")), vjust = -0.5, size = 5) +
+  
+  scale_fill_manual(values = c("TRUE" = "steelblue", "FALSE" = "firebrick")) +
+  labs(title = "Net Policy Gain/Loss by Year",
+       x = "Year", y = "Net Gain (New Policies - Terminations)") +
+  theme_minimal()
+
+```
+*By State 
+
+```{r}
+
+new_by_state <- New%>%
+  group_by(State) %>%
+  summarise(`New Policies`= sum(`New Policies`, na.rm = TRUE))
+
+term_by_state <- End %>%
+  group_by(State) %>%
+  summarise(Terminations = sum(Terminations, na.rm = TRUE))
+
+# Combine into one table
+state_summary <- full_join(new_by_state, term_by_state, by = "State") %>%
+  mutate(Net_Gain = `New Policies` - Terminations)
+
+
+
+state_long <- state_summary %>%
+  pivot_longer(cols = c(`New Policies`, Terminations),
+               names_to = "Type", values_to = "Count")
+
+ggplot(state_long, aes(x = State, y = Count, fill = Type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "New Policies vs Terminations by State",
+       y = "Number of Policies") +
+  theme_minimal()
+
+
+ggplot(state_summary, aes(x = State, y = Net_Gain, fill = Net_Gain > 0)) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  scale_fill_manual(values = c("TRUE" = "steelblue", "FALSE" = "firebrick")) +
+  labs(title = "Net Policy Gain/Loss by State",
+       y = "Net Policies (New - Terminations)") +
+  theme_minimal()
+```
+
+Plot 1: New Policies vs Terminations by State
+NSW & VIC: Very high volume on both acquisition and termination → large markets, but very competitive.
+VIC, TAS, SA, NSW all show large net losses
+
+VIC is the worst, largest net loss
+
+Potential factors:
+
+Highly competitive market with aggressive poaching
+
+Poor retention strategies or product dissatisfaction
+
+
+WA is the only strong positive performer: net gain > 90,000
+WA (Strong performer)
+May have:
+
+Better regional pricing or product-market fit
+
+Fewer competitors
+
+Strong brand presence or partnerships in WA
+
+Lower price sensitivity / more loyal members
+
+
+
+
+
+# 目标客户群体， segment 
+
+
+
+
+```{r}
+
+New_summary <- New%>%
+  group_by(Age_Band,Year) %>%
+  summarise(Total_New_Policies = sum(`New Policies`, na.rm = TRUE)) %>% 
+  mutate(Policies_Thousands = Total_New_Policies / 1000)
+
+
+
+New_age <- ggplot(New_summary, aes(x = Age_Band, y = Policies_Thousands, fill = as.factor(Year))) +
+  geom_bar(stat = "identity",  position = "dodge") + 
+  labs(title = "New Policies by Age Band", x = "Age Band", y = "Number of New Policies (in thousands)",
+        fill = "Year") +
+  theme_minimal()
+
+
+ Terminations_summary <- End%>%
+  group_by(Age_Band,Year) %>%
+  summarise(Total_Terminations= sum(`Terminations`, na.rm = TRUE)) %>% 
+  mutate(Terminations_Thousands = Total_Terminations / 1000)
+
+
+End_age <- ggplot(Terminations_summary, aes(x = Age_Band, y = Terminations_Thousands, fill = as.factor(Year))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Terminations by Age Band", x = "Age Band", y = "Number of Terminations (in thousands)",
+       fill = "Year") +
+  theme_minimal()
+
+grid.arrange(New_age, End_age, ncol = 2)
+
+
+
+```
+# Average 
+
+
+
+```{r}
+Terminations_summary_avg <- End %>%
+  group_by(Age_Band) %>%
+  summarise(Average_Terminations = mean(Terminations, na.rm = TRUE)) %>%
+  mutate(Terminations_Thousands = Average_Terminations / 1000)
+
+# Step 2: Create the bar plot
+End_age_avg <- ggplot(Terminations_summary_avg, aes(x = Age_Band, y = Terminations_Thousands, fill = Age_Band)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Average Terminations by Age Band (2022–2024)",
+       x = "Age Band",
+       y = "Average Number of Terminations (in thousands)") +
+  theme_minimal() +
+  theme(legend.position = "none")  # Remove legend if fill is self-explanatory
+
+End_age_avg
+
+
+grid.arrange(New_age_avg, End_age_avg, ncol = 2)
+```
+
+```{r}
+
+New_avg <- New %>%
+  group_by(Age_Band, Year) %>%
+  summarise(Total_New = sum(`New Policies`, na.rm = TRUE)) %>%
+  group_by(Age_Band) %>%
+  summarise(Average_New_Policies = mean(Total_New)) %>%
+  mutate(Metric = "New Policies", Value = Average_New_Policies / 1000)
+
+# Step 2: Total terminations per Age Band per Year, then average
+End_avg <- End %>%
+  group_by(Age_Band, Year) %>%
+  summarise(Total_Terminations = sum(Terminations, na.rm = TRUE)) %>%
+  group_by(Age_Band) %>%
+  summarise(Average_Terminations = mean(Total_Terminations)) %>%
+  mutate(Metric = "Terminations", Value = Average_Terminations / 1000)
+
+
+# Step 3: Combine both into one tidy dataframe
+Combined_avg <- bind_rows(
+  New_avg %>% select(Age_Band, Metric, Value),
+  End_avg %>% select(Age_Band, Metric, Value)
+)
+
+# Step 4: Plot
+Combined_plot <- ggplot(Combined_avg, aes(x = Age_Band, y = Value, fill = Metric)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Average New Policies vs Terminations by Age Band (2022–2024)",
+       x = "Age Band",
+       y = "Average Number of Policies (in thousands)",
+       fill = "") +
+  theme_minimal()
+
+Combined_plot
+
+
+
+```
+
+
+
+
+```{r}
+
+New_product <- New%>%
+  group_by(Product, Year) %>%
+  summarise(Total_New_Policies = sum(`New Policies`, na.rm = TRUE)) %>% 
+  mutate(Policies_Thousands = Total_New_Policies / 1000)
+
+New_p <- ggplot(New_product, aes(x = Product, y = Policies_Thousands, fill = as.factor(Year))) +
+   geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "New Policies by Product and Year",
+       x = "Product", y = "Number of New Policies (in thousands)",
+       fill = "Year") +
+  theme_minimal()
+
+End_product <- End%>%
+  group_by(Product, Year) %>%
+  summarise(Total_End_Policies = sum(Terminations, na.rm = TRUE)) %>% 
+  mutate(Policies_Thousands = Total_End_Policies / 1000)
+
+
+End_p <- ggplot(End_product, aes(x = Product, y = Policies_Thousands, fill = as.factor(Year))) +
+   geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Terminations by Product and Year", x = "Product", y = "Number of Terminations (in thousands)", fill = "Year") +
+  theme_minimal()
+
+grid.arrange(New_p, End_p, ncol = 2)
+
+
+# Net gain/loss 
+
+```
+
+```{r}
+
+# Step 1: Average New Policies by Product
+New_product_avg <- New %>%
+  group_by(Product, Year) %>%
+  summarise(Total_New = sum(`New Policies`, na.rm = TRUE)) %>%
+  group_by(Product) %>%
+  summarise(Average_New_Policies = mean(Total_New)) %>%
+  mutate(Metric = "New Policies", Value = Average_New_Policies / 1000)
+
+# Step 2: Average Terminations by Product
+End_product_avg <- End %>%
+  group_by(Product, Year) %>%
+  summarise(Total_End = sum(Terminations, na.rm = TRUE)) %>%
+  group_by(Product) %>%
+  summarise(Average_Terminations = mean(Total_End)) %>%
+  mutate(Metric = "Terminations", Value = Average_Terminations / 1000)
+
+# Step 3: Combine both into one tidy dataset
+Combined_product_avg <- bind_rows(
+  New_product_avg %>% select(Product, Metric, Value),
+  End_product_avg %>% select(Product, Metric, Value)
+)
+
+# Step 4: Plot the comparison
+Product_comparison_plot <- ggplot(Combined_product_avg, aes(x = Product, y = Value, fill = Metric)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Average New Policies vs Terminations by Product (2022–2024)",
+       x = "Product",
+       y = "Average Number of Policies (in thousands)",
+       fill = "") +
+  theme_minimal()
+
+Product_comparison_plot
+```
+
+```{r}
+target_products <- c("Product A", "Product C", "Product D", "Product G")
+product_scale_summary <- End %>%
+  filter(Product %in% target_products) %>%
+  group_by(Product, Scale) %>%
+  summarise(Total_End = sum(Terminations, na.rm = TRUE)) %>%
+  group_by(Product) %>%
+  mutate(Percent = round(Total_End / sum(Total_End) * 100, 1))
+
+# Create one pie chart per product using facet_wrap
+pie_chart_product <- ggplot(product_scale_summary, aes(x = "", y = Percent, fill = Scale)) +
+  geom_col(width = 1, color = "white") +
+  coord_polar("y") +
+  facet_wrap(~ Product) +
+  geom_text(aes(label = paste0(Percent, "%")),
+            position = position_stack(vjust = 0.5), size = 3) +
+  labs(title = "Customer Scale Breakdown for Key Products",
+       x = NULL, y = NULL, fill = "Policy Scale") +
+  theme_void() +
+  theme(strip.text = element_text(face = "bold"))
+
+pie_chart_product
+```
+
+
+
+
+
+
+
+
+
+
+Product A – Strong Performer (Growing Leader)
+New Policies: High and growing steadily (especially 2024).
+
+Terminations: Also increasing, but at a much lower rate than acquisitions.
+
+✅ Net Positive Growth → Product A is your top acquisition product with healthy retention.
+
+Product C – Underperformer (Critical Issue)
+New Policies: Near-zero acquisition across all years.
+
+Terminations: Fairly high and increasing.
+
+Severe Net Loss
+
+signal:
+
+Outdated pricing or uncompetitive coverage
+
+Customer dissatisfaction
+
+Poor market targeting
+
+Product D,F,G  – Shrinking Interest
+New Policies: Strong in 2022, dropped by 2024.
+
+Terminations: Stayed consistently high.
+
+Negative trajectory → Possibly losing appeal or being replaced by newer alternatives.
+
+Product D F G keep loss customer, with rarely acquisition in 2024. 
+
+
+```{r}
+
+New %>% filter(Product == "Product C") 
+
+```
+
+
+
+
+```{r}
+age_product_table <- table(New$Age_Band, New$Product)
+
+age_product_table
+
+
+```
+
+# Percentage 
+
+```{r}
+Product_Scale <- ggplot(New, aes(x = Scale, fill = Product)) +
+  geom_bar(position = "dodge") +
+  labs(title = "New Policies by Scale and Product",
+       x = "Scale", y = "Number of New Policies") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+
+Product_Age <- ggplot(New, aes(x = Age_Band, fill = Product)) +
+  geom_bar(position = "dodge") +
+  labs(title = "New Policies by Age band and Product",
+       x = "Scale", y = "Number of New Policies") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+grid.arrange(Product_Scale, Product_Age, ncol = 2)
+
+```
+# Both charts (Scale by Product & Age Band by Product) reveal that:
+
+Most products share very similar distribution patterns of customers across different scales (Single, Couple, etc.) and age bands.
+
+There's no clear targeting strategy visible — e.g., Product A, B, C, D all attract similar proportions of Singles, Families, 30–49 year-olds, etc.
+
+Even “Other” products dominate across all segments, diluting unique product segmentation.
+
+ Lack of Product Differentiation,  Differentiation	The products may not be tailored to specific customer needs (e.g., Product C isn’t clearly appealing to any unique demographic).
+ 
+ Missed Segmentation Opportunities, There’s likely room to design products more targeted to, say, young singles, senior couples, or single parents.
+
+
+Product Positioning Strategy Review:
+
+Audit the product features vs. demographic needs.
+
+Cluster customer profiles and match with tailored benefits.
+
+Reposition underperforming products or consolidate overlapping ones.
+
+Launch pilot offerings for underserved segments (e.g., tailored plans for seniors or young couples with extras focus).
+
+
+# 
+By policy type 
+
+
+
+
+
+
+
+
+```{r}
+new_pie_data <- New %>%
+  group_by(Year, Scale) %>%
+  summarise(Total = sum(`New Policies`), .groups = "drop") %>%
+  group_by(Year) %>%
+  mutate(Percent = Total / sum(Total) * 100,
+         Label = paste0(Scale, "\n", round(Percent, 1), "%"))
+
+
+ggplot(new_pie_data, aes(x = "", y = Percent, fill = Scale)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y") +
+  facet_wrap(~Year) +
+   geom_text(aes(label = Label),
+            position = position_stack(vjust = 0.5),
+            size = 2, color = "white") +
+  labs(title = "New Policy Distribution by Scale",
+       fill = "Policy Scale") +
+  theme_void() +  # remove axes
+  theme(strip.text = element_text(size = 12, face = "bold"))
+
+```
+```{r}
+end_pie_data <- End %>%
+  group_by(Age_Band) %>%
+  summarise(Term_avg = mean(Terminations, na.rm = TRUE), .groups = "drop") %>%
+  mutate(Percent = Term_avg / sum(Term_avg) * 100,
+         Label = paste0(Age_Band, "\n", round(Percent, 1), "%"))
+
+
+ggplot(end_pie_data, aes(x = "", y = Percent, fill = Age_Band)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y") +
+   geom_text(aes(label = Label),
+            position = position_stack(vjust = 0.5),
+            size = 3, color = "white") +
+  labs(title = "Terminations Distribution by Age Band",
+       fill = "Policy Scale") +
+  theme_void() +  # remove axes
+  theme(strip.text = element_text(size = 12, face = "bold"))
+```
+
+
+```{r}
+
+
+
+```
+
+
+```{r}
+
+unique(End$Tenure_Band)
+
+unique(End$Next_Health_Fund)
+```
+
+Assumption: 年轻人更容易离开（多变）， 
+Tenure period 越长越不容易离开。 
+
+
+```{r}
+filter_End <- End %>% 
+  filter(`Next_Health_Fund` != "Dropped Private Health Insurance")
+
+
+bubble_data <- filter_End %>%
+  group_by(Tenure_Band, Age_Band) %>%
+  summarise(Total_Terminations = sum(Terminations, na.rm = TRUE)) %>%
+  ungroup()
+
+# Optional: calculate churn rate if you have policy base (e.g., Total_Customers)
+# bubble_data <- bubble_data %>%
+#   mutate(Churn_Rate = Total_Terminations / Total_Customers)
+
+# Step 2: Create the bubble plot
+ggplot(bubble_data, aes(x = Tenure_Band, y = Age_Band, size = Total_Terminations, fill = Age_Band)) +
+  geom_point(alpha = 0.7, shape = 21, color = "black") +
+  scale_size_continuous(name = "Terminations", range = c(3, 15)) +
+  labs(title = "Terminations by Tenure Band and Age Band",
+       x = "Tenure Band", y = "Age Band") +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+```
+
+```{r}
+
+# Step 1: Convert Tenure Band into ordered numeric values
+tenure_order <- c("0 - 2 Years", "3 - 5 Years", "6 - 10 Years", "11 - 19 Years", "20+ Years")
+End$Tenure_Band <- factor(End$Tenure_Band, levels = tenure_order, ordered = TRUE)
+End$Tenure_Num <- as.numeric(End$Tenure_Band)
+
+# Step 2: Summarise total terminations by Tenure_Num
+cor_data <- End %>%
+  group_by(Tenure_Num) %>%
+  summarise(Total_Terminations = sum(Terminations, na.rm = TRUE))
+
+# Step 3: Correlation plot
+ggplot(cor_data, aes(x = Tenure_Num, y = Total_Terminations)) +
+  geom_point(size = 4, color = "#2a9d8f") +
+  geom_smooth(method = "lm", se = FALSE, color = "#264653", linetype = "dashed") +
+  labs(title = "Correlation Between Tenure and Terminations",
+       x = "Tenure Band (numeric scale)",
+       y = "Total Terminations") +
+  theme_minimal()
+
+
+
+```
+
+```{r}
+# Order tenure band correctly
+tenure_order <- c("0 - 2 Years", "3 - 5 Years", "6 - 10 Years", "11 - 19 Years", "20+ Years")
+End$Tenure_Band <- factor(End$Tenure_Band, levels = tenure_order, ordered = TRUE)
+
+# Summarise average terminations per tenure band
+tenure_summary <- End %>%
+  #filter(`Next_Health_Fund` != "Dropped PHI") %>%  # Optional: focus on switching
+  group_by(Tenure_Band) %>%
+  summarise(Avg_Terminations = mean(Terminations, na.rm = TRUE))
+
+# Plot
+ggplot(tenure_summary, aes(x = Tenure_Band, y = Avg_Terminations, group = 1)) +
+  geom_line(color = "#1f77b4", size = 1.2) +
+  geom_point(color = "#1f77b4", size = 3) +
+  labs(title = "Average Terminations by Tenure Band (2022–2024)",
+       x = "Tenure Band",
+       y = "Average Terminations") +
+  theme_minimal()
+```
+
+
+
+
+
+
+
+
+
+```{r}
+new_sources <- New %>%
+  filter(!is.na(Previous_Health_Fund)) %>%
+  group_by(Previous_Health_Fund) %>%
+  summarise(Customers_From = sum(`New Policies`)) %>%
+  arrange(desc(Customers_From))
+
+ggplot(head(new_sources, 5), aes(x = reorder(Previous_Health_Fund, Customers_From), y = Customers_From)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Top 5 Funds Customers Came From", x = "Previous Fund", y = "New Customers") +
+  theme_minimal()
+
+
+churn_targets <- End%>%
+  filter(!is.na(Next_Health_Fund)) %>%
+  group_by(Next_Health_Fund) %>%
+  summarise(Customers_To = sum(Terminations)) %>%
+  arrange(desc(Customers_To))
+
+ggplot(head(churn_targets, 5), aes(x = reorder(Next_Health_Fund, Customers_To), y = Customers_To)) +
+  geom_bar(stat = "identity", fill = "firebrick") +
+  coord_flip() +
+  labs(title = "Top 5 Funds Customers Switched To", x = "Next Fund", y = "Terminated Customers") +
+  theme_minimal()
+
+```
+# Net Gain/loss of competitors analysis 
+
+```{r}
+# Summarise new customers by previous health fund
+new_sources <- New %>%
+  filter(!is.na(Previous_Health_Fund)) %>%
+  group_by(Fund = Previous_Health_Fund) %>%
+  summarise(New_Customers = sum(`New Policies`, na.rm = TRUE))
+
+# Summarise terminated customers by next health fund
+churn_targets <- End %>%
+  filter(!is.na(Next_Health_Fund)) %>%
+  group_by(Fund = Next_Health_Fund) %>%
+  summarise(Terminated_Customers = sum(Terminations, na.rm = TRUE))
+
+# Combine datasets
+net_fund_flow <- full_join(new_sources, churn_targets, by = "Fund") %>%
+  mutate(
+    New_Customers = replace_na(New_Customers, 0),
+    Terminated_Customers = replace_na(Terminated_Customers, 0),
+    Net_Change = New_Customers - Terminated_Customers
+  ) %>%
+  arrange(desc(Net_Change))
+
+# Plot top 5 gain/loss funds
+top_funds <- net_fund_flow %>%
+  slice_max(abs(Net_Change), n = 10)
+
+ggplot(top_funds, aes(x = reorder(Fund, Net_Change), y = Net_Change, fill = Net_Change > 0)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  scale_fill_manual(values = c("TRUE" = "steelblue", "FALSE" = "firebrick"),
+                    labels = c("Loss", "Gain")) +
+  scale_y_continuous(labels = label_number(scale = 1/1000, suffix = "K")) + 
+  labs(
+    title = "Competitive Positioning: Net Policy Gain/Loss",
+    x = "Fund",
+    y = "Net Gain/Loss (New - Terminated)",
+    fill = "Result"
+  ) +
+  theme_minimal()
+```
+
+
+
+
+
+
+
+# Action
+
+Add policy 
+
+Claim 时效
+
+
